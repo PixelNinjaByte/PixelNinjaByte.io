@@ -8,6 +8,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 
 
 DB_PATH = "studybot.db"
@@ -35,6 +38,18 @@ class PomodoroState:
     work_minutes: int
     break_minutes: int
     cycles: int
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def run_health_server() -> None:
+    port = int(os.getenv("PORT", "10000"))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
 
 
 class StudyStore:
@@ -721,7 +736,9 @@ def main() -> None:
     if not token:
         raise RuntimeError("DISCORD_BOT_TOKEN is missing. Set it in your environment or .env file.")
 
+    threading.Thread(target=run_health_server, daemon=True).start()
     bot.run(token)
+
 
 
 if __name__ == "__main__":
